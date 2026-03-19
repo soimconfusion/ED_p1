@@ -116,36 +116,120 @@ print("Protein:", protein_seq)
 
 ### T5
 
-def reverseComplement():
-    return None
-
+def reverseComplement(sequence : str):
+    #complement:
+    dna_complement = {'A': 'T', 'C':'G', 'T': 'A', 'G':'C'}
+    dna_com = []
+    for base in sequence: #0(n)
+        if base in dna_complement.keys():
+            dna_com.append(dna_complement[base])
+    return "".join(dna_com[::-1]) # or use list.reverse(); reversed()<-iterator or use a loop
+                #join -> O(n)
+dna_seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCGATAG"
+rev_complement = reverseComplement(dna_seq)
+print("Reverse complement:", rev_complement)
 
 ## Parte III
 
 ### T6
 
-def findMotif():
-    return None
+def findMotif(dna_sequence : str, motif :str):
+    step = len(motif)
+    positions = []
+    find = []
+    # most be a better way to do this...
+    for i in range(0, len(dna_sequence) - step + 1):
+        find.append(dna_sequence[i])
+        if len(find) == 3:
+            if "".join(find) == motif:
+                positions.append(i - 2)
+            find = find[1:]
+    return positions
+
+dna_seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
+motif = "GCC"
+positions = findMotif(dna_seq, motif)
+#print(positions)
 
 ### T7
+from collections import Counter
+def mostFrequentKMotifs(dna_sequence: str, k : int):
+    motifs = []
+    result = []
+    for b in range(0, len(dna_sequence) -k +1): #o(n)
+            motifs.append(dna_sequence[b: b + k]) #O(k) ?
+    most_motifs = Counter(motifs)
+    max_freq = most_motifs.most_common(1)[0][1]
+    for i,y in most_motifs.items():
+        if y == max_freq:
+            result.append((i,y))
+    return result
 
-def mostFrequentKMotifs():
-    return None
-
+dna_seq = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG"
+dna_seq2 = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCGATAG"
+k = 3
+kmers2 = mostFrequentKMotifs(dna_seq2, k)
+kmers = mostFrequentKMotifs(dna_seq, k)
+#print(kmers)
+#print(kmers2)
 
 ## Parte IV
 
 ### T8
 
-def highestGC():
-    return None
-
+def highestGC(file):
+    dict = readFASTA(file)
+    ID = list(dict.keys())
+    CG_list = []
+    seqs = []
+    for _, y in dict.values():
+        seqs.append(y)
+    for seq in seqs:
+        type_count = Counter(seq)
+        cg = type_count['C'] + type_count['G']
+        total = len(seq)
+        CG_list.append(round(cg/total * 100))
+    i = CG_list.index(max(CG_list))
+    return (ID[i], CG_list[i])
+#highestGC("data_sequences/J02459.1.fasta")
+#print(highestGC("data_sequences/J02459.1.fasta"))
 ### T9
 
-def compositionMatrix():
-    return None
+#trocar para DNA
+def compositionMatrix(file):
+    dict = readFASTA(file)
+    ID = list(dict.keys())
+    dict_interno = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
+    lis =[]
+    result={}
+    for _, y in dict.values():
+        for i in range(len(y)):
+            if y[i] not in dict_interno.keys():
+                dict_interno[y[i]] = 1
+            elif y[i] in dict_interno.keys():
+                dict_interno[y[i]] +=1
+        lis.append(dict_interno)
+        dict_interno = {}
+
+    for l in range(0, len(ID)):
+        result[ID[l]] = lis[l]
+    return result
+print(compositionMatrix("test.fasta"))
 
 ### T10
 
-def indexSpeciesGC ():
+def indexSpeciesGC (fasta: dict):
+    ids = []
+    lst = []
+    species =[] # key
+    for x, y in fasta.items():
+        ids.append(x)
+        for z, _ in fasta.values():
+            lst.append(z)
+    # print(fasta.items())
+    # print(ids)
+    # print(lst)
     return None
+dict = indexSpeciesGC(readFASTA("test.fasta"))
+#ids_gc_medio  =  { }
+# {dict.values[0] : ids_gc_medio }
