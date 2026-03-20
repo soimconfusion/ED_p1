@@ -204,13 +204,10 @@ def compositionMatrix(file):
     result={}
     for _, y in dict.values():
         for i in range(len(y)):
-            if y[i] not in dict_interno.keys():
-                dict_interno[y[i]] = 1
-            elif y[i] in dict_interno.keys():
-                dict_interno[y[i]] +=1
+            if y[i] in dict_interno.keys():
+                dict_interno[y[i]] += 1
         lis.append(dict_interno)
-        dict_interno = {}
-
+    
     for l in range(0, len(ID)):
         result[ID[l]] = lis[l]
     return result
