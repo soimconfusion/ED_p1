@@ -211,22 +211,55 @@ def compositionMatrix(file):
     for l in range(0, len(ID)):
         result[ID[l]] = lis[l]
     return result
-print(compositionMatrix("test.fasta"))
+#print(compositionMatrix("test.fasta"))
 
 ### T10
-
+# considerar "proteins" na verdade se for RNA tambem vai tratar so considerar ATCGN!
+import re
 def indexSpeciesGC (fasta: dict):
-    ids = []
-    lst = []
-    species =[] # key
-    for x, y in fasta.items():
-        ids.append(x)
-        for z, _ in fasta.values():
-            lst.append(z)
-    # print(fasta.items())
-    # print(ids)
-    # print(lst)
-    return None
-dict = indexSpeciesGC(readFASTA("test.fasta"))
+    out_dict = {} #tipo dict[][] [species][(ids: set(identifiers), 'gc_medio)]
+    # nao é preciso uma lista para cada passa/info
+    #recolher toda a info necessaria de fasta de uma so vez:
+    
+    # falta por o id certo é preciso que seja um set antes de se começara indexar...
+
+    for id, (description, seq) in fasta.items():
+        found = re.search(r"\[(.*?)\]", description)
+        if found:
+            specie = found.group(1)
+        else:
+            specie = "Unknown"
+        if specie not in out_dict: #new key
+            out_dict[specie] = {'ids': set(), 'gc_medio': 0, 'count': 0}
+        out_dict[specie]['ids'].add(id) # ja sabe que é set()
+# gc_count é None caso tenha algum caracter alem de `A`, `T`, `C`, `G` or `N`
+        valid_seq = True
+        #count = 0
+        for c in seq:
+            if c not in "ATCGN":
+                valid_seq = False
+        if valid_seq:
+            #na verdade toal aqui!
+            out_dict[specie]['gc_medio'] += (seq.count('G') + seq.count('C')) / len(seq)
+            out_dict[specie]['count'] += 1
+            #count += 1 <- store in dict then delete value!
+    # ja vimos todas as sequencias!
+    for specie in out_dict:
+        if out_dict[specie]['count']> 0:
+            out_dict[specie]['gc_medio'] = round(out_dict[specie]['gc_medio'] / out_dict[specie]['count'], 4)
+        else:
+            out_dict[specie]['gc_medio'] = None
+        del out_dict[specie]['count']
+    
+    # DO search if theres a python funct that grabs substrings by chars
+        #re.search()<. usa uma sintax tipo sed(?ig)
+        # sim usa expressoes regulares (regex)
+        # \ para escapar [ e ] como caracteres especiais
+    return out_dict
+# tem header com o formato bem, mas é proteina
+dict1 = indexSpeciesGC(readFASTA("data_sequences/NP_001138820.1.fasta"))
+print(dict1)
+dict2 = indexSpeciesGC(readFASTA("data_sequences/NP_001362750.1.fasta"))
+print(dict2)
 #ids_gc_medio  =  { }
 # {dict.values[0] : ids_gc_medio }
