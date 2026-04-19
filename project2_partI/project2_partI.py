@@ -125,9 +125,10 @@ def topPathogenicConditions(filepath):
     res = [(name, count) for name, count in counts.items() if count >= 6]
         #descending order by value count (same last ex)
     return sorted(res, key=lambda x: x[1], reverse= True)
-
+'''
 for cond, n in topPathogenicConditions('data/clinvar_variants.json')[:5]:
     print(f"  {cond}: {n}")
+'''
 
 def variantIndex(filepath):
     """T1.4 — Returns nested dict {gene: {chr: {clinical_significance: [titles]}}}."""
@@ -156,6 +157,7 @@ def variantIndex(filepath):
 # level1 : extract gene; variation_set; title
 # aka; gene["symbol"]:{ at same level of gene) variation_set[{variation_loc}] <- usar for: loc["chr"] : { clinical_significance["name"] : title}}}
 # That is: `{ gene_symbol : { chromosome : { clinical_significance : [variant_titles] } } }`
+'''
 idx = variantIndex('data/clinvar_variants.json')
 for gene in list(idx.keys())[:2]:
     for chrom in idx[gene]:
@@ -164,6 +166,7 @@ for gene in list(idx.keys())[:2]:
 print("------------------")
 print(list(idx.items())[:5]        )
 print(len(idx['BRCA2']['13']['Pathogenic']) )
+'''
 
 ##TO DO generalize in aux functions (like open_json + skip top levels that are irrelevant; get_gene: get_chr...) 
 
@@ -171,22 +174,145 @@ print(len(idx['BRCA2']['13']['Pathogenic']) )
 # Task 2 — NumPy: Gene Expression Analysis (TCGA)
 # ─────────────────────────────────────────────────────────────────────────────
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Read expression matrix
+import csv
+
+with open('data/expression_matrix.csv', newline='') as f:
+    reader = csv.reader(f)
+    header = next(reader)
+    sample_ids = header[1:]            # list of sample IDs
+    gene_ids   = []
+    expr_rows  = []
+    for row in reader:
+        gene_ids.append(row[0])
+        expr_rows.append([float(x) for x in row[1:]])
+
+expr_matrix = np.array(expr_rows)     # shape: (n_genes, n_samples)
+gene_ids    = np.array(gene_ids)
+sample_ids  = np.array(sample_ids)
+
+# Read sample metadata
+import pandas as pd
+metadata = pd.read_csv('data/sample_metadata.csv')
+
+# Boolean masks for tumor and normal samples
+tumor_mask  = np.array([s in metadata[metadata['condition']=='tumor']['sample_id'].values
+                         for s in sample_ids])
+normal_mask = np.array([s in metadata[metadata['condition']=='normal']['sample_id'].values
+                         for s in sample_ids])
+'''
+print(f"Expression matrix shape: {expr_matrix.shape}")
+print(f"Tumor samples: {tumor_mask.sum()} | Normal samples: {normal_mask.sum()}")
+'''
 def geneExpressionStats(expr_matrix):
     """T2.1 — Returns (means, stds): two 1D arrays of shape (n_genes,)."""
-    pass
+    # the standard qoulde give the results overall(all genes and all smaples)
+    # by columns (axis=0) this is samples
+    means = np.mean(expr_matrix, axis=1)
+    stds = np.std(expr_matrix, axis=1)
+    return means, stds
+'''
+means, stds = geneExpressionStats(expr_matrix)
+print(means.shape, stds.shape)
+
+means, stds = geneExpressionStats(expr_matrix)
+print("Top 5 most variable genes (highest std):")
+top_var_idx = np.argsort(stds)[::-1][:5]
+for i in top_var_idx:
+    print(f" GENE_EXPRESSION\n {gene_ids[i]}: mean={means[i]:.3f}, std={stds[i]:.3f}")
+'''
 
 def topDifferentialGenes(expr_matrix, gene_ids, tumor_mask, normal_mask):
     """T2.2 — Returns list of 10 tuples (gene_id, delta_mean) sorted by descending |delta_mean|."""
-    pass
+    # mean expression by tumour SAMPLES (colums)?
+    # mean normal SAMPLES
+    mean_tumor = np.mean(expr_matrix[:, tumor_mask], axis=1)
+    mean_normal = np.mean(expr_matrix[:, normal_mask], axis=1)
+    delta_mean = mean_tumor - mean_normal
 
+    delta_idx= np.argsort(abs(delta_mean))[::-1]
+
+    lst= []
+    for i in delta_idx[:10]:
+        lst.append((gene_ids[i], delta_mean[i]))
+    return lst
+'''
+top10 = topDifferentialGenes(expr_matrix, gene_ids, tumor_mask, normal_mask)
+print(top10[0]) # not the same of the example but em baxio vemos que esta top
+top10 = topDifferentialGenes(expr_matrix, gene_ids, tumor_mask, normal_mask)
+print("Top 10 differentially expressed genes:")
+for gene, delta in top10:
+    direction = "▲ overexpressed" if delta > 0 else "▼ underexpressed"
+    print(f"  {gene}: Δmean = {delta:+.3f}  ({direction} in tumor)")
+'''
 def sampleCorrelationMatrix(expr_matrix):
     """T2.3 — Returns Pearson correlation matrix of shape (n_samples, n_samples). NumPy only."""
-    pass
+    x = expr_matrix.T #matrix normal:(n_genes, n_samples); transposta: (n_samples, n_genes)
+    corr = np.corrcoef(x) #give the (n_samples, n_samples), correlation of rows!
+    return corr
+'''
+corr = sampleCorrelationMatrix(expr_matrix)
+print(f"Correlation matrix shape: {corr.shape}")
+print(f"Min correlation: {corr.min():.4f} | Max (off-diagonal): {corr[corr < 0.9999].max():.4f}")
+# Visualise as heatmap — complete the plot below
+fig, ax = plt.subplots(figsize=(9, 7))
+ax.imshow(corr, cmap='coolwarm', vmin= -1, vmax = 1 )
+ax.set_title("Pearson Correlation (tumor --- normal)")
+plt.tight_layout()
+plt.savefig('sample_correlation_heatmap.png', dpi=150)
+plt.show()
 
+
+fig, ax = plt.subplots(figsize=(9, 7))
+ax.imshow(corr, cmap='coolwarm', vmin=-1, vmax=1)
+
+n_tumor = tumor_mask.sum()
+ax.axvline(n_tumor - 0.5, color='black', lw=1)
+ax.axhline(n_tumor - 0.5, color='black', lw=1)
+
+ax.set_title("Pearson Correlation (tumour vs normal)")
+plt.colorbar(ax.images[0])
+plt.tight_layout()
+plt.savefig('sample_correlation_heatmap2.png', dpi=150)
+plt.show()
+'''
 def zscoreNormalize(expr_matrix):
     """T2.4a — Returns z-score normalised matrix (per gene, across all samples)."""
-    pass
+    means = np.mean(expr_matrix, axis=1, keepdims= True)
+    stds= np.std(expr_matrix, axis=1, keepdims= True)
+
+    z = np.zeros_like(expr_matrix, dtype=float)
+    no_zero = (stds[:, 0] != 0)
+    z[no_zero] = (expr_matrix[no_zero] -means[no_zero] / stds[no_zero])
+    return z
+
+z = zscoreNormalize(expr_matrix)
+print(z)
 
 def classifyGenes(z_matrix, gene_ids, tumor_mask):
     """T2.4b — Returns {gene_id: 'overexpressed'|'underexpressed'|'stable'}."""
-    pass
+    genes= {}
+    tumor_means = np.mean(z_matrix[:, tumor_mask], axis = 1)
+    for i, gene in enumerate(gene_ids):
+        if tumor_means[i] > 0.5:
+            genes[gene] = 'overexpressed'
+        elif tumor_means[i] < -0.5:
+            genes[gene] = 'underexpressed'
+        else:
+            genes[gene] = 'stable'
+    return genes
+
+classes = classifyGenes(z, gene_ids, tumor_mask)
+
+counts = Counter(classes.values())
+print("Gene classification summary:")
+for label, n in sorted(counts.items()):
+    print(f"  {label}: {n} gene(s)")
+
+print("\nDifferentially expressed genes (overexpressed or underexpressed):")
+for gene, cls in classes.items():
+    #if cls != 'stable':
+        print(f"  {gene}: {cls}")
